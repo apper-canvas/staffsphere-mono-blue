@@ -179,16 +179,14 @@ function Employees() {
         toast.error('Failed to update employee. Please try again.');
       })
       .finally(() => setIsSubmitting(false));
-      Name: '',
+  };
 
   // Handle delete employee
-      department: '', 
-      join_date: '',
+  const handleDeleteEmployee = () => {
     setIsSubmitting(true);
     
     deleteEmployee(currentEmployee.Id)
       .then(response => {
-        toast.success('Employee deleted successfully!');
         fetchEmployees(); // Refresh the employee list
         setShowDeleteModal(false);
         setCurrentEmployee(null);
@@ -223,12 +221,12 @@ function Employees() {
   // Reset form
   const resetForm = () => {
     setFormData({
-      name: '',
+      Name: '',
       email: '',
       phone: '',
       department: '',
       position: '',
-      joinDate: '',
+      join_date: '',
       status: 'active'
     });
     setFormErrors({});
@@ -320,35 +318,32 @@ function Employees() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="bg-surface-50 dark:bg-surface-700 text-left">
+                {filteredEmployees.map((employee, index) => (
                   <tr 
-                    key={employee.id} 
+                    key={employee.Id || index} 
                     className="border-t border-surface-200 dark:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-750"
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          {employee.name.substring(0, 2).toUpperCase()}
+                          {employee.Name.substring(0, 2).toUpperCase()}
                         </div>
-                {filteredEmployees.map((employee, index) => (
-                          <div className="font-medium text-surface-800 dark:text-surface-100">{employee.name}</div>
-                    key={employee.Id || index} 
-                        </div>
+                        <div className="font-medium text-surface-800 dark:text-surface-100">{employee.Name}</div>
                       </div>
                     </td>
                     <td className="p-4 text-surface-700 dark:text-surface-300">{employee.department}</td>
                     <td className="p-4 text-surface-700 dark:text-surface-300">{employee.position}</td>
-                          {employee.Name.substring(0, 2).toUpperCase()}
+                    <td className="p-4 text-surface-700 dark:text-surface-300">{formatDate(employee.join_date)}</td>
                     <td className="p-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          <div className="font-medium text-surface-800 dark:text-surface-100">{employee.Name}</div>
+                        employee.status === 'active'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' 
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
                       }`}>
                         {employee.status === 'active' ? 'Active' : 'On Leave'}
                       </span>
                     </td>
-                    <td className="p-4 text-surface-700 dark:text-surface-300">{formatDate(employee.join_date)}</td>
+                    <td className="p-4">
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openEditModal(employee)}
@@ -382,7 +377,7 @@ function Employees() {
               <h3 className="text-lg font-semibold">Add New Employee</h3>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-full hover:bg-surface-100 dark:hover:bg-surface-700"
+                Are you sure you want to delete {currentEmployee.Name}? This action cannot be undone.
               >
                 <XIcon size={20} />
               </button>
@@ -466,7 +461,7 @@ function Employees() {
               </div>
               <h3 className="text-lg font-medium text-center mb-2">Delete Employee</h3>
               <p className="text-surface-600 dark:text-surface-400 text-center mb-6">
-                Are you sure you want to delete {currentEmployee.name}? This action cannot be undone.
+                Are you sure you want to delete {currentEmployee.Name}? This action cannot be undone.
               </p>
               
               <div className="flex justify-center gap-3">
