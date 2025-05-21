@@ -18,6 +18,39 @@ import ErrorPage from './pages/ErrorPage'
 // Create auth context
 export const AuthContext = createContext(null);
 
+// Extract NavLinks into a separate component
+function NavLinks() {
+  const { pathname } = useLocation();
+  const navItems = [
+    { icon: <HomeIcon size={20} />, label: 'Dashboard', path: '/' },
+    { icon: <Users size={20} />, label: 'Employees', path: '/employees' },
+    { icon: <Calendar size={20} />, label: 'Leave Management', path: '/leave' },
+    { icon: <BarChart2 size={20} />, label: 'Performance', path: '/performance' }
+  ]
+  
+  return (
+    <nav className="space-y-1">
+      {navItems.map((item) => (
+        <Link
+          key={item.path}
+          to={item.path}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+            pathname === item.path
+              ? 'bg-primary bg-opacity-10 text-primary dark:text-primary-light'
+              : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700'
+          }`}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+// Helper function to get icon
+const getIcon = (name) => (size = 24) => <span className={`lucide lucide-${name}`} style={{width: size, height: size}}></span>;
+
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [darkMode, setDarkMode] = useState(
@@ -206,7 +239,7 @@ function App() {
               <span className="text-lg font-semibold">StaffSphere</span>
             </div>
             
-            {renderNavLinks()}
+            <NavLinks />
           </div>
         </div>
       </div>
@@ -219,7 +252,7 @@ function App() {
         {/* Desktop Sidebar */}
         <aside className="hidden md:block w-64 p-4 bg-white dark:bg-surface-800 border-r border-surface-200 dark:border-surface-700">
           <div className="sticky top-20">
-            {renderNavLinks()}
+            <NavLinks />
           </div>
         </aside>
         
@@ -262,41 +295,6 @@ function App() {
     </div>
     </AuthContext.Provider>
   )
-}
-
-function renderNavLinks() {
-  const { pathname } = useLocation();
-  const navItems = [
-    { icon: <HomeIcon size={20} />, label: 'Dashboard', path: '/' },
-    { icon: <Users size={20} />, label: 'Employees', path: '/employees' },
-    { icon: <Calendar size={20} />, label: 'Leave Management', path: '/leave' },
-    { icon: <BarChart2 size={20} />, label: 'Performance', path: '/performance' }
-  ]
-  
-  return (
-    <nav className="space-y-1">
-      {navItems.map((item, index) => (
-        <Link
-          key={item.path}
-          to={item.path}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-            pathname === item.path
-              ? 'bg-primary bg-opacity-10 text-primary dark:text-primary-light'
-              : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700'
-          }`}
-        >
-          {item.icon}
-          <span>{item.label}</span>
-        </Link>
-      ))}
-    </nav>
-  )
-}
-
-function getIcon(name) {
-  return function(size = 24) {
-    return <span className={`lucide lucide-${name}`} style={{width: size, height: size}}></span>;
-  }
 }
 
 export default App
