@@ -4,7 +4,7 @@ import { AnimatePresence } from 'framer-motion'
 import { ToastContainer, toast } from 'react-toastify'
 import { useSelector, useDispatch } from 'react-redux'
 import { setUser, clearUser } from './store/userSlice'
-import { Sun, Moon, Menu, X, Home as HomeIcon, Users, BarChart2, Settings, Calendar } from 'lucide-react'
+import { Sun, Moon, Menu, X, Home as HomeIcon, Users, BarChart2, Settings, Calendar, LogOut } from 'lucide-react'
 
 // Pages
 import Home from './pages/Home'
@@ -128,6 +128,9 @@ function App() {
         toast.error("Authentication failed. Please try again.");
       }
     });
+    
+    // Set initialized state even if there's an error with ApperUI setup
+    setIsInitialized(true);
   }, [dispatch, navigate]);
 
   // Authentication methods to share via context
@@ -185,7 +188,7 @@ function App() {
             {isAuthenticated && (
               <button onClick={authMethods.logout} 
                 className="p-2 rounded-full hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors">
-                {getIcon('log-out')(size=20)}
+                <LogOut size={20} />
               </button>
             )}
           </div>
