@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Link } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { ToastContainer, toast } from 'react-toastify'
 import { Sun, Moon, Menu, X, Home as HomeIcon, Users, BarChart2, Settings, Calendar } from 'lucide-react'
@@ -7,6 +7,7 @@ import { Sun, Moon, Menu, X, Home as HomeIcon, Users, BarChart2, Settings, Calen
 // Pages
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
+import Employees from './pages/Employees'
 
 function App() {
   const [darkMode, setDarkMode] = useState(
@@ -99,6 +100,7 @@ function App() {
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<Home />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/employees" element={<Employees />} />
             </Routes>
           </AnimatePresence>
         </main>
@@ -135,7 +137,7 @@ function renderNavLinks() {
     <nav className="space-y-1">
       {navItems.map((item, index) => (
         <a
-          key={index}
+          key={item.path}
           href={item.path}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
         >
