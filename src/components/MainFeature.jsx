@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getIcon } from '../utils/iconUtils';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createTask } from '../services/taskService';
+import { createLeaveRequest } from '../services/leaveRequestService';
+import { getEmployees } from '../services/employeeService';
 
 // Import icons
 const UserPlusIcon = getIcon('user-plus');
@@ -18,11 +21,14 @@ const XCircleIcon = getIcon('x-circle');
 
 function MainFeature({ onAddActivity }) {
   // States for form
+  const [employees, setEmployees] = useState([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [employeeError, setEmployeeError] = useState('');
   const [activeTab, setActiveTab] = useState('quick-add');
   const [formData, setFormData] = useState({
-    employeeName: '',
+    employeeId: '',
+    employeeDisplay: '',
     actionType: 'task',
-    taskDescription: '',
     priority: 'medium',
     dueDate: format(new Date(), 'yyyy-MM-dd'),
     leaveType: 'vacation',
@@ -33,6 +39,25 @@ function MainFeature({ onAddActivity }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Fetch employees for the dropdown
+  useEffect(() => {
+    const fetchEmployeesList = async () => {
+      setIsLoadingEmployees(true);
+      setEmployeeError('');
+      try {
+        const response = await getEmployees();
+        if (response && response.data) {
+          setEmployees(response.data);
+        }
+      } catch (error) {
+        setEmployeeError('Failed to load employees');
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+    fetchEmployeesList();
+  }, []);
   
   // Handle tab change
   const handleTabChange = (tab) => {
@@ -63,10 +88,8 @@ function MainFeature({ onAddActivity }) {
     const newErrors = {};
     
     // Common validations
-    if (!formData.employeeName.trim()) {
-      newErrors.employeeName = 'Employee name is required';
-    } else if (formData.employeeName.trim().length < 3) {
-      newErrors.employeeName = 'Name must be at least 3 characters';
+    if (!formData.employeeId) {
+      newErrors.employeeId = 'Employee is required';
     }
     
     // Action-specific validations
@@ -104,37 +127,75 @@ function MainFeature({ onAddActivity }) {
     
     try {
       // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Prepare activity data for parent component
-      let activityData = {
-        user: formData.employeeName,
-        action: '',
-        status: ''
-      };
+      const selectedEmployee = employees.find(emp => emp.Id === formData.employeeId);
+      const employeeName = selectedEmployee ? selectedEmployee.Name : '';
+      let result;
       
       if (formData.actionType === 'task') {
-        activityData.action = `was assigned a new ${formData.priority} priority task`;
-        activityData.status = formData.priority === 'high' ? 'critical' : 'pending';
+        // Create a task
+        const taskData = {
+          Name: `Task for ${employeeName}`,
+          description: formData.taskDescription,
+          priority: formData.priority,
+          due_date: formData.dueDate,
+          status: 'pending',
+          assigned_to: formData.employeeId
+        };
+        
+        result = await createTask(taskData);
+        
+        // Prepare activity data for parent component
+        const activityData = {
+          user: employeeName,
+          action: `was assigned a new ${formData.priority} priority task`,
+          status: formData.priority === 'high' ? 'critical' : 'pending'
+        };
+        
+        // Call the parent callback
+        onAddActivity(activityData);
+        
+        // Show success message
+        setSuccessMessage('Task assigned successfully!');
       } else if (formData.actionType === 'leave') {
-        activityData.action = `requested ${formData.leaveType} leave`;
-        activityData.status = 'pending';
+        // Create a leave request
+        const leaveData = {
+          Name: `${formData.leaveType} Leave for ${employeeName}`,
+          leave_type: formData.leaveType,
+          start_date: formData.leaveStartDate,
+          end_date: formData.leaveEndDate,
+          reason: formData.leaveReason,
+          status: 'pending',
+          employee: formData.employeeId
+        };
+        
+        result = await createLeaveRequest(leaveData);
+        
+        // Prepare activity data for parent component
+        const activityData = {
+          user: employeeName,
+          action: `requested ${formData.leaveType} leave`,
+          status: 'pending'
+        };
+        
+        // Call the parent callback
+        onAddActivity(activityData);
+        
+        // Show success message
+        setSuccessMessage('Leave request submitted successfully!');
       }
       
-      // Call the parent callback
-      onAddActivity(activityData);
-      
-      // Show success message
-      const successMsg = formData.actionType === 'task' 
-        ? 'Task assigned successfully!' 
-        : 'Leave request submitted successfully!';
-      
-      setSuccessMessage(successMsg);
+      if (!result || !result.success) {
+        throw new Error('Failed to create record');
+      }
       
       // Reset form for next entry but keep the employee name
-      const employeeName = formData.employeeName;
+      const employeeId = formData.employeeId;
+      const employeeDisplay = formData.employeeDisplay;
       setFormData({
-        employeeName,
+        employeeId,
+        employeeDisplay,
         actionType: 'task',
         taskDescription: '',
         priority: 'medium',
@@ -225,27 +286,41 @@ function MainFeature({ onAddActivity }) {
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {/* Employee Name */}
                 <div>
-                  <label htmlFor="employeeName" className="label">
-                    Employee Name
+                  <label htmlFor="employeeId" className="label">
+                    Select Employee
                   </label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-500">
                       <UserIcon className="h-5 w-5" />
                     </div>
-                    <input
-                      type="text"
-                      id="employeeName"
-                      name="employeeName"
-                      value={formData.employeeName}
+                    <select
+                      id="employeeId"
+                      name="employeeId"
+                      value={formData.employeeId}
                       onChange={handleChange}
-                      className={`input pl-10 ${errors.employeeName ? 'border-red-500 dark:border-red-700' : ''}`}
-                      placeholder="Enter employee name"
-                    />
+                      className={`input pl-10 ${errors.employeeId ? 'border-red-500 dark:border-red-700' : ''}`}
+                      disabled={isLoadingEmployees}
+                    >
+                      <option value="">Select an employee</option>
+                      {employees.map(employee => (
+                        <option key={employee.Id} value={employee.Id}>
+                          {employee.Name}
+                        </option>
+                      ))}
+                    </select>
+                    {isLoadingEmployees && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className="animate-spin h-5 w-5 text-surface-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
                   </div>
-                  {errors.employeeName && (
+                  {errors.employeeId && (
                     <p className="mt-1 text-sm text-red-500 dark:text-red-400 flex items-center gap-1">
                       <AlertTriangleIcon className="h-4 w-4" />
-                      {errors.employeeName}
+                      {errors.employeeId}
                     </p>
                   )}
                 </div>

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { useSelector } from 'react-redux';
 import { getIcon } from '../utils/iconUtils';
-
+import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '../services/employeeService';
+ 
 // Import icons
 const SearchIcon = getIcon('search');
 const UserPlusIcon = getIcon('user-plus');
@@ -16,71 +18,6 @@ const PhoneIcon = getIcon('phone');
 const BriefcaseIcon = getIcon('briefcase');
 const CalendarIcon = getIcon('calendar');
 
-// Mock data for employees
-const initialEmployees = [
-  {
-    id: 1,
-    name: 'Alex Morgan',
-    email: 'alex.morgan@staffsphere.com',
-    phone: '(555) 123-4567',
-    department: 'Human Resources',
-    position: 'HR Manager',
-    joinDate: '2020-03-15',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: 'Jordan Smith',
-    email: 'jordan.smith@staffsphere.com',
-    phone: '(555) 234-5678',
-    department: 'Engineering',
-    position: 'Senior Developer',
-    joinDate: '2019-06-22',
-    status: 'active'
-  },
-  {
-    id: 3,
-    name: 'Taylor Johnson',
-    email: 'taylor.johnson@staffsphere.com',
-    phone: '(555) 345-6789',
-    department: 'Marketing',
-    position: 'Marketing Specialist',
-    joinDate: '2021-01-10',
-    status: 'active'
-  },
-  {
-    id: 4,
-    name: 'Casey Williams',
-    email: 'casey.williams@staffsphere.com',
-    phone: '(555) 456-7890',
-    department: 'Finance',
-    position: 'Financial Analyst',
-    joinDate: '2020-09-05',
-    status: 'active'
-  },
-  {
-    id: 5,
-    name: 'Riley Brown',
-    email: 'riley.brown@staffsphere.com',
-    phone: '(555) 567-8901',
-    department: 'Engineering',
-    position: 'UI/UX Designer',
-    joinDate: '2022-02-18',
-    status: 'active'
-  },
-  {
-    id: 6,
-    name: 'Jamie Garcia',
-    email: 'jamie.garcia@staffsphere.com',
-    phone: '(555) 678-9012',
-    department: 'Sales',
-    position: 'Sales Representative',
-    joinDate: '2021-07-30',
-    status: 'on leave'
-  }
-];
-
-// Department options
 const departments = [
   'Human Resources',
   'Engineering',
@@ -94,16 +31,19 @@ const departments = [
 
 function Employees() {
   const [employees, setEmployees] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   const [formData, setFormData] = useState({
-    name: '',
+    Name: '',
     email: '',
-    phone: '',
+    phone: '', 
     department: '',
     position: '',
     joinDate: '',
@@ -111,20 +51,33 @@ function Employees() {
   });
   const [formErrors, setFormErrors] = useState({});
 
-  // Simulate loading employees from API
+  // Get employee data from the service
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setEmployees(initialEmployees);
-      setIsLoading(false);
-    }, 800);
-    
-    return () => clearTimeout(timer);
+    fetchEmployees();
   }, []);
+
+  // Function to fetch employees
+  const fetchEmployees = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await getEmployees();
+      if (response && response.data) {
+        setEmployees(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setErrorMessage('Failed to load employees. Please try again.');
+      toast.error('Failed to load employees');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter employees based on search term
   const filteredEmployees = employees.filter(
     employee => 
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.position.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -150,7 +103,7 @@ function Employees() {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.name.trim()) errors.name = 'Name is required';
+    if (!formData.Name.trim()) errors.Name = 'Name is required';
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -159,7 +112,7 @@ function Employees() {
     if (!formData.phone.trim()) errors.phone = 'Phone is required';
     if (!formData.department) errors.department = 'Department is required';
     if (!formData.position.trim()) errors.position = 'Position is required';
-    if (!formData.joinDate) errors.joinDate = 'Join date is required';
+    if (!formData.join_date) errors.join_date = 'Join date is required';
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -167,52 +120,95 @@ function Employees() {
 
   // Handle add employee
   const handleAddEmployee = () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
     
-    const newEmployee = {
-      id: Date.now(),
-      ...formData
+    setIsSubmitting(true);
+    
+    // Convert form data to match API fields
+    const employeeData = {
+      Name: formData.Name,
+      email: formData.email,
+      phone: formData.phone,
+      department: formData.department,
+      position: formData.position,
+      join_date: formData.join_date,
+      status: formData.status
     };
     
-    setEmployees(prev => [...prev, newEmployee]);
-    toast.success('Employee added successfully!');
-    setShowAddModal(false);
-    resetForm();
+    createEmployee(employeeData)
+      .then(response => {
+        toast.success('Employee added successfully!');
+        fetchEmployees(); // Refresh the employee list
+        setShowAddModal(false);
+        resetForm();
+      })
+      .catch(error => {
+        toast.error('Failed to add employee. Please try again.');
+      })
+      .finally(() => setIsSubmitting(false));
   };
-
+  
   // Handle edit employee
   const handleEditEmployee = () => {
     if (!validateForm()) return;
     
-    setEmployees(prev => 
-      prev.map(emp => 
-        emp.id === currentEmployee.id ? { ...emp, ...formData } : emp
-      )
-    );
+    setIsSubmitting(true);
     
-    toast.success('Employee updated successfully!');
-    setShowEditModal(false);
-    resetForm();
-  };
+    // Convert form data to match API fields
+    const employeeData = {
+      Name: formData.Name,
+      email: formData.email,
+      phone: formData.phone,
+      department: formData.department,
+      position: formData.position,
+      join_date: formData.join_date,
+      status: formData.status
+    };
+    
+    updateEmployee(currentEmployee.Id, employeeData)
+      .then(response => {
+        toast.success('Employee updated successfully!');
+        fetchEmployees(); // Refresh the employee list
+        setShowEditModal(false);
+        resetForm();
+      })
+      .catch(error => {
+        toast.error('Failed to update employee. Please try again.');
+      })
+      .finally(() => setIsSubmitting(false));
+      Name: '',
 
   // Handle delete employee
-  const handleDeleteEmployee = () => {
-    setEmployees(prev => prev.filter(emp => emp.id !== currentEmployee.id));
-    toast.success('Employee deleted successfully!');
-    setShowDeleteModal(false);
-    setCurrentEmployee(null);
+      department: '', 
+      join_date: '',
+    setIsSubmitting(true);
+    
+    deleteEmployee(currentEmployee.Id)
+      .then(response => {
+        toast.success('Employee deleted successfully!');
+        fetchEmployees(); // Refresh the employee list
+        setShowDeleteModal(false);
+        setCurrentEmployee(null);
+      })
+      .catch(error => {
+        toast.error('Failed to delete employee. Please try again.');
+      })
+      .finally(() => setIsSubmitting(false));
   };
 
   // Open edit modal
   const openEditModal = (employee) => {
     setCurrentEmployee(employee);
     setFormData({
-      name: employee.name,
+      Name: employee.Name,
       email: employee.email,
       phone: employee.phone,
       department: employee.department,
       position: employee.position,
-      joinDate: employee.joinDate,
+      join_date: employee.join_date,
       status: employee.status
     });
     setShowEditModal(true);
@@ -324,7 +320,7 @@ function Employees() {
                 </tr>
               </thead>
               <tbody>
-                {filteredEmployees.map((employee) => (
+                <tr className="bg-surface-50 dark:bg-surface-700 text-left">
                   <tr 
                     key={employee.id} 
                     className="border-t border-surface-200 dark:border-surface-700 hover:bg-surface-50 dark:hover:bg-surface-750"
@@ -334,25 +330,25 @@ function Employees() {
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                           {employee.name.substring(0, 2).toUpperCase()}
                         </div>
-                        <div>
+                {filteredEmployees.map((employee, index) => (
                           <div className="font-medium text-surface-800 dark:text-surface-100">{employee.name}</div>
-                          <div className="text-sm text-surface-500">{employee.email}</div>
+                    key={employee.Id || index} 
                         </div>
                       </div>
                     </td>
                     <td className="p-4 text-surface-700 dark:text-surface-300">{employee.department}</td>
                     <td className="p-4 text-surface-700 dark:text-surface-300">{employee.position}</td>
-                    <td className="p-4 text-surface-700 dark:text-surface-300">{formatDate(employee.joinDate)}</td>
+                          {employee.Name.substring(0, 2).toUpperCase()}
                     <td className="p-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        employee.status === 'active' 
+                          <div className="font-medium text-surface-800 dark:text-surface-100">{employee.Name}</div>
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' 
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
                       }`}>
                         {employee.status === 'active' ? 'Active' : 'On Leave'}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-surface-700 dark:text-surface-300">{formatDate(employee.join_date)}</td>
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openEditModal(employee)}
@@ -410,7 +406,7 @@ function Employees() {
                 <button 
                   className="btn btn-primary"
                   onClick={handleAddEmployee}
-                >
+                  disabled={isSubmitting}>
                   Add Employee
                 </button>
               </div>
@@ -451,7 +447,7 @@ function Employees() {
                 <button 
                   className="btn btn-primary"
                   onClick={handleEditEmployee}
-                >
+                  disabled={isSubmitting}>
                   Update Employee
                 </button>
               </div>
@@ -483,7 +479,7 @@ function Employees() {
                 <button 
                   className="btn bg-red-600 hover:bg-red-700 text-white focus:ring-red-500"
                   onClick={handleDeleteEmployee}
-                >
+                  disabled={isSubmitting}>
                   Delete
                 </button>
               </div>
@@ -505,15 +501,15 @@ function EmployeeForm({ formData, formErrors, handleInputChange, departments }) 
           <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400" size={16} />
           <input
             id="name"
-            name="name"
+            name="Name"
             type="text"
-            className={`input pl-10 ${formErrors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
+            className={`input pl-10 ${formErrors.Name ? 'border-red-500 focus:ring-red-500' : ''}`}
             placeholder="Full Name"
-            value={formData.name}
+            value={formData.Name}
             onChange={handleInputChange}
           />
         </div>
-        {formErrors.name && <p className="text-red-500 text-sm mt-1">{formErrors.name}</p>}
+        {formErrors.Name && <p className="text-red-500 text-sm mt-1">{formErrors.Name}</p>}
       </div>
       
       <div className="col-span-1">
@@ -590,14 +586,14 @@ function EmployeeForm({ formData, formErrors, handleInputChange, departments }) 
           <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400" size={16} />
           <input
             id="joinDate"
-            name="joinDate"
+            name="join_date"
             type="date"
-            className={`input pl-10 ${formErrors.joinDate ? 'border-red-500 focus:ring-red-500' : ''}`}
-            value={formData.joinDate}
+            className={`input pl-10 ${formErrors.join_date ? 'border-red-500 focus:ring-red-500' : ''}`}
+            value={formData.join_date}
             onChange={handleInputChange}
           />
         </div>
-        {formErrors.joinDate && <p className="text-red-500 text-sm mt-1">{formErrors.joinDate}</p>}
+        {formErrors.join_date && <p className="text-red-500 text-sm mt-1">{formErrors.join_date}</p>}
       </div>
       
       <div className="col-span-1">

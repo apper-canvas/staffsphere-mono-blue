@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { getIcon } from '../utils/iconUtils';
 import MainFeature from '../components/MainFeature';
+import { useSelector } from 'react-redux';
+import { getDepartmentStats } from '../services/departmentStatsService';
+import { getActivities, createActivity } from '../services/activityService';
+import { format, formatDistanceToNow } from 'date-fns';
 
 // Import icons
 const UsersIcon = getIcon('users');
@@ -13,30 +17,74 @@ const TrendingUpIcon = getIcon('trending-up');
 const AlertCircleIcon = getIcon('alert-circle');
 
 function Home() {
-  const [stats, setStats] = useState([
-    { id: 1, title: 'Total Employees', value: 142, icon: 'users', color: 'bg-blue-500', increase: '+12%' },
-    { id: 2, title: 'Departments', value: 8, icon: 'briefcase', color: 'bg-purple-500', increase: '+1 new' },
-    { id: 3, title: 'On Leave Today', value: 4, icon: 'calendar', color: 'bg-amber-500', increase: '-2' },
-    { id: 4, title: 'Late Check-ins', value: 3, icon: 'clock', color: 'bg-red-500', increase: '-1' }
-  ]);
+  const [stats, setStats] = useState([]);
+  const [activities, setActivities] = useState([]);  
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [isActivitiesLoading, setIsActivitiesLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
+  const [activitiesError, setActivitiesError] = useState('');
   
-  const [activities, setActivities] = useState([
-    { id: 1, user: 'Alex Morgan', action: 'requested vacation', time: '2 hours ago', status: 'pending' },
-    { id: 2, user: 'Sarah Johnson', action: 'completed training', time: '4 hours ago', status: 'completed' },
-    { id: 3, user: 'James Wilson', action: 'submitted monthly report', time: '1 day ago', status: 'completed' },
-    { id: 4, user: 'Emma Davis', action: 'is late for check-in', time: 'just now', status: 'critical' }
-  ]);
-  
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useSelector((state) => state.user);
 
-  // Simulate data loading
+  // Fetch department stats and activities on component mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    
-    return () => clearTimeout(timer);
+    fetchDepartmentStats();
+    fetchActivities();
   }, []);
+
+  // Fetch department stats
+  const fetchDepartmentStats = async () => {
+    setIsStatsLoading(true);
+    setStatsError('');
+    try {
+      const response = await getDepartmentStats();
+      if (response && response.data) {
+        setStats(response.data.map(stat => ({
+          id: stat.Id,
+          title: stat.title,
+          value: stat.value,
+          icon: stat.icon,
+          color: stat.color,
+          increase: stat.increase
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching department stats:', error);
+      setStatsError('Failed to load department statistics');
+      toast.error('Failed to load department statistics');
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
+  // Fetch activities
+  const fetchActivities = async () => {
+    setIsActivitiesLoading(true);
+    setActivitiesError('');
+    try {
+      const response = await getActivities({}, 1, 10);
+      if (response && response.data) {
+        const formattedActivities = response.data.map(activity => {
+          const timeAgo = formatDistanceToNow(new Date(activity.time), { addSuffix: true });
+          
+          return {
+            id: activity.Id,
+            user: activity.user?.Name || 'Unknown User',
+            action: activity.action,
+            time: timeAgo,
+            status: activity.status
+          };
+        });
+        setActivities(formattedActivities);
+      }
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      setActivitiesError('Failed to load activities');
+      toast.error('Failed to load activities');
+    } finally {
+      setIsActivitiesLoading(false);
+    }
+  };
   
   // Function to get the appropriate icon component
   const getActivityIcon = (status) => {
@@ -66,20 +114,39 @@ function Home() {
     }
   };
   
-  // Add a new activity (interactive feature)
+  // Handle adding a new activity
   const handleAddActivity = (newActivity) => {
-    setActivities(prev => [
-      { 
-        id: Date.now(), 
-        user: newActivity.user, 
-        action: newActivity.action, 
-        time: 'just now', 
-        status: newActivity.status 
-      },
-      ...prev
-    ]);
-    
-    toast.success(`Activity for ${newActivity.user} recorded successfully!`);
+    // Create the activity record in the backend
+    createActivityRecord(newActivity);
+  };
+
+  // Create activity record in the backend
+  const createActivityRecord = async (activityData) => {
+    try {
+      // First, we need to get the employee ID based on the name
+      // In a real application, you would have a proper employee selection UI
+      // For now, we'll create a simple activity with the provided data
+      
+      const newActivity = {
+        Name: `Activity for ${activityData.user}`,
+        action: activityData.action,
+        status: activityData.status,
+        activity_type: activityData.action.includes('task') ? 'task' : 'leave',
+        time: new Date().toISOString()
+      };
+      
+      // Create the activity
+      const response = await createActivity(newActivity);
+      
+      if (response && response.success) {
+        toast.success(`Activity for ${activityData.user} recorded successfully!`);
+        // Refresh activities after adding a new one
+        fetchActivities();
+      }
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      toast.error('Failed to record activity. Please try again.');
+    }
   };
 
   return (
@@ -97,10 +164,10 @@ function Home() {
         </p>
       </header>
       
-      {isLoading ? (
+      {isStatsLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-pulse">
           {[1, 2, 3, 4].map(item => (
-            <div key={item} className="card h-28">
+            <div key={`skeleton-${item}`} className="card h-28">
               <div className="h-5 bg-surface-200 dark:bg-surface-700 rounded w-1/2 mb-3"></div>
               <div className="h-8 bg-surface-200 dark:bg-surface-700 rounded w-1/3 mb-2"></div>
               <div className="h-4 bg-surface-200 dark:bg-surface-700 rounded w-1/4"></div>
@@ -158,7 +225,7 @@ function Home() {
           </div>
           
           <div className="p-4 flex-1 overflow-auto">
-            {isLoading ? (
+            {isActivitiesLoading ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3, 4].map(item => (
                   <div key={item} className="flex gap-3">
