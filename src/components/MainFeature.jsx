@@ -524,8 +524,6 @@ function MainFeature({ onAddActivity }) {
   );
 }
 
-// Icon for the CalendarIcon
-const CalendarIcon = getIcon('calendar');
 
 // Helper data for recent items
 const recentItems = [
