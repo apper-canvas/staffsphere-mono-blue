@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { ToastContainer, toast } from 'react-toastify'
-import { Sun, Moon, Menu, X, Home, Users, BarChart2, Settings, Calendar } from 'lucide-react'
+import { Sun, Moon, Menu, X, Home as HomeIcon, Users, BarChart2, Settings, Calendar } from 'lucide-react'
 
 // Pages
 import Home from './pages/Home'
@@ -124,7 +124,7 @@ function App() {
 
 function renderNavLinks() {
   const navItems = [
-    { icon: <Home size={20} />, label: 'Dashboard', path: '/' },
+    { icon: <HomeIcon size={20} />, label: 'Dashboard', path: '/' },
     { icon: <Users size={20} />, label: 'Employees', path: '/employees' },
     { icon: <Calendar size={20} />, label: 'Leave Management', path: '/leave' },
     { icon: <BarChart2 size={20} />, label: 'Performance', path: '/performance' },
