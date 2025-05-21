@@ -5,7 +5,6 @@ import { ToastContainer, toast } from 'react-toastify'
 import { Sun, Moon, Menu, X, Home, Users, BarChart2, Settings, Calendar } from 'lucide-react'
 
 // Pages
-import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 
 function App() {
