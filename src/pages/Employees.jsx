@@ -377,7 +377,7 @@ function Employees() {
               <h3 className="text-lg font-semibold">Add New Employee</h3>
               <button 
                 onClick={() => setShowAddModal(false)}
-                Are you sure you want to delete {currentEmployee.Name}? This action cannot be undone.
+                className="p-1 rounded-full hover:bg-surface-100 dark:hover:bg-surface-700"
               >
                 <XIcon size={20} />
               </button>
