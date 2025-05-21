@@ -209,7 +209,8 @@ function App() {
       </div>
 
       {isAuthenticated ? (
-      {/* Main Layout */}
+      /* Main Layout */
+      
       <div className="flex flex-1">
       
         {/* Desktop Sidebar */}
