@@ -10,6 +10,7 @@ const PenIcon = getIcon('pen');
 const UserIcon = getIcon('user');
 const FileTextIcon = getIcon('file-text');
 const ClipboardCheckIcon = getIcon('clipboard-check');
+const CalendarIcon = getIcon('calendar');
 const ClockIcon = getIcon('clock');
 const AlertTriangleIcon = getIcon('alert-triangle');
 const CheckCircleIcon = getIcon('check-circle');
